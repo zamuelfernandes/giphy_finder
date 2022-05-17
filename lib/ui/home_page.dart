@@ -1,20 +1,24 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
+// ignore: unused_import
+import 'package:giphy_finder/ui/gif_page.dart';
 import 'package:http/http.dart' as http;
+import 'package:share/share.dart';
+import 'package:transparent_image/transparent_image.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  _HomePageState createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
   String? _search;
 
-  int _offSet = 0;
+  int _offset = 0;
 
   Future<Map> _getGifs() async {
     http.Response response;
@@ -24,10 +28,19 @@ class _HomePageState extends State<HomePage> {
           "https://api.giphy.com/v1/gifs/trending?api_key=Mb70uBXWs9AW6x1wr8k1sIX45TkSUCxE&limit=20&rating=g"));
     } else {
       response = await http.get(Uri.parse(
-          "https://api.giphy.com/v1/gifs/search?api_key=Mb70uBXWs9AW6x1wr8k1sIX45TkSUCxE&q=$_search&limit=19&offset=$_offSet&rating=g&lang=en"));
+          "https://api.giphy.com/v1/gifs/search?api_key=Mb70uBXWs9AW6x1wr8k1sIX45TkSUCxE&q=$_search&limit=19&offset=$_offset&rating=g&lang=en"));
     }
 
     return json.decode(response.body);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    _getGifs().then((map) {
+      print(map);
+    });
   }
 
   @override
@@ -39,37 +52,37 @@ class _HomePageState extends State<HomePage> {
             "https://developers.giphy.com/branch/master/static/header-logo-0fec0225d189bc0eae27dac3e3770582.gif"),
         centerTitle: true,
       ),
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.black,
       body: Column(
-        children: [
+        children: <Widget>[
           Padding(
             padding: const EdgeInsets.all(10.0),
             child: TextField(
               decoration: const InputDecoration(
-                labelText: "Pesquise Aqui:",
-                labelStyle: TextStyle(color: Colors.black),
-                fillColor: Colors.white,
+                labelText: "Pesquise Aqui!",
+                labelStyle: TextStyle(color: Colors.white),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(25)),
-                  //borderSide: BorderSide(width: 3.0, style: BorderStyle.solid),
+                  borderRadius: BorderRadius.all(Radius.circular(25.0)),
+                  borderSide: BorderSide(color: Colors.white),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(25.0)),
+                  borderSide: BorderSide(color: Colors.white),
                 ),
               ),
-              style: const TextStyle(
-                color: Colors.black,
-                fontSize: 18,
-              ),
+              style: const TextStyle(color: Colors.white, fontSize: 18.0),
               textAlign: TextAlign.center,
               onSubmitted: (text) {
                 setState(() {
                   _search = text;
-                  _offSet = 0;
+                  _offset = 0;
                 });
               },
               onChanged: (text) {
-                if (text.isEmpty) {
+                if (text == "") {
                   setState(() {
-                    _search = null;
-                    _offSet = 0;
+                    _search = text;
+                    _offset = 0;
                   });
                 }
               },
@@ -77,95 +90,100 @@ class _HomePageState extends State<HomePage> {
           ),
           Expanded(
             child: FutureBuilder(
-              future: _getGifs(),
-              builder: (context, snapshot) {
-                switch (snapshot.connectionState) {
-                  case ConnectionState.none:
-                  case ConnectionState.waiting:
-                    return Container(
-                      width: 300,
-                      height: 300,
-                      alignment: Alignment.center,
-                      child: const CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
-                        strokeWidth: 5.0,
-                      ),
-                    );
-                  default:
-                    if (snapshot.hasError) {
-                      return Container();
-                    } else {
-                      return _createGifTable(context, snapshot);
-                    }
-                }
-              },
-            ),
+                future: _getGifs(),
+                builder: (context, snapshot) {
+                  switch (snapshot.connectionState) {
+                    case ConnectionState.waiting:
+                    case ConnectionState.none:
+                      return Container(
+                        width: 200.0,
+                        height: 200.0,
+                        alignment: Alignment.center,
+                        child: const CircularProgressIndicator(
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                          strokeWidth: 5.0,
+                        ),
+                      );
+                    default:
+                      if (snapshot.hasError) {
+                        return Container();
+                      } else {
+                        return _createGifTable(context, snapshot);
+                      }
+                  }
+                }),
           ),
         ],
       ),
     );
   }
 
-  Widget _createGifTable(
-      BuildContext context, AsyncSnapshot<Object?> snapshot) {
-    return GridView.builder(
-      padding: const EdgeInsets.all(10.0),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 10.0,
-        mainAxisSpacing: 10.0,
-      ),
-      itemCount: _getCount((snapshot.data! as Map<String, dynamic>)['data']),
-      itemBuilder: (context, index) {
-        // Se eu não estiver pesquisando || Esse não é meu último item
-        if (_search == null ||
-            index < (snapshot.data! as Map<String, dynamic>)['data'].length) {
-          return GestureDetector(
-            //child: Container(color: Colors.blue),
-            child: Image.network(
-              (snapshot.data! as Map<String, dynamic>)['data'][index]['images']
-                  ['fixed_height']['url'],
-              height: 300.0,
-              fit: BoxFit.cover,
-            ),
-          );
-        } else {
-          return GestureDetector(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
-                Icon(
-                  Icons.add,
-                  color: Colors.black,
-                  size: 70.0,
-                ),
-                Text(
-                  "Carregar mais...",
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 22.0,
-                  ),
-                )
-              ],
-            ),
-            onTap: () {
-              setState(() {
-                _offSet += 19;
-              });
-            },
-          );
-        }
-      },
-    );
-  }
-
-  int? _getCount(List data) {
+  int _getCount(List data) {
     if (_search == null) {
       return data.length;
     } else {
       return data.length + 1;
     }
   }
-}
 
-// (snapshot.data! as Map<String, dynamic>)['data'].length
+  Widget _createGifTable(BuildContext context, AsyncSnapshot snapshot) {
+    return GridView.builder(
+        padding: const EdgeInsets.all(10.0),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2, crossAxisSpacing: 10.0, mainAxisSpacing: 10.0),
+        itemCount: _getCount(snapshot.data["data"]),
+        itemBuilder: (context, index) {
+          if (_search == null || index < snapshot.data["data"].length) {
+            return Container(
+                decoration:
+                    BoxDecoration(borderRadius: BorderRadius.circular(25.0)),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.all(Radius.circular(25)),
+                  child: GestureDetector(
+                    child: FadeInImage.memoryNetwork(
+                      placeholder: kTransparentImage,
+                      image: snapshot.data["data"][index]["images"]
+                          ["fixed_height"]["url"],
+                      height: 300.0,
+                      fit: BoxFit.cover,
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  GifPage(snapshot.data["data"][index])));
+                    },
+                    onLongPress: () {
+                      Share.share(snapshot.data["data"][index]["images"]
+                          ["fixed_height"]["url"]);
+                    },
+                  ),
+                ));
+          } else {
+            return GestureDetector(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const <Widget>[
+                  Icon(
+                    Icons.add,
+                    color: Colors.white,
+                    size: 70.0,
+                  ),
+                  Text(
+                    "Carregar mais...",
+                    style: TextStyle(color: Colors.white, fontSize: 22.0),
+                  )
+                ],
+              ),
+              onTap: () {
+                setState(() {
+                  _offset += 19;
+                });
+              },
+            );
+          }
+        });
+  }
+}
