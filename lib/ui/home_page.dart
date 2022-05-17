@@ -73,15 +73,22 @@ class _HomePageState extends State<HomePage> {
               style: const TextStyle(color: Colors.white, fontSize: 18.0),
               textAlign: TextAlign.center,
               onSubmitted: (text) {
-                setState(() {
-                  _search = text;
-                  _offset = 0;
-                });
+                if (text == "") {
+                  setState(() {
+                    _search = null;
+                    _offset = 0;
+                  });
+                } else {
+                  setState(() {
+                    _search = text;
+                    _offset = 0;
+                  });
+                }
               },
               onChanged: (text) {
                 if (text == "") {
                   setState(() {
-                    _search = text;
+                    _search = null;
                     _offset = 0;
                   });
                 }
